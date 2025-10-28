@@ -1,0 +1,144 @@
+{
+  "meta": {
+    "project": "ULF-v11-Genesis",
+    "purpose": "Initial genome for the Self-Evolution Institution (SEI). Rules drive Optimizer and Navigator behavior.",
+    "version": "0.1.0",
+    "created_at": "2025-10-28",
+    "maintainer": "The Guardian"
+  },
+
+  "global_parameters": {
+    "optimizer_confidence_threshold": 0.6,
+    "navigator_escape_csi_threshold": 0.3,
+    "shadow_trial_uof_accept": 0.5,
+    "max_concurrent_shadow_trials": 2,
+    "min_cycles_between_arch_changes": 10
+  },
+
+  "rules": [
+    {
+      "id": "opt-001",
+      "name": "Tune-learning-rate-on-slow-learning",
+      "priority": 100,
+      "enabled": true,
+      "scope": "Optimizer",
+      "trigger": {
+        "condition": "overallCSI < 0.8 && durableLearningIndex < 0.6",
+        "description": "When overall performance is below ideal and durable learning is weak"
+      },
+      "action": {
+        "type": "UpdateParameter",
+        "targetInst": "SEI",
+        "parameter": "learning_rate",
+        "strategy": "heuristic_scale_down",
+        "value_hint": 0.005
+      },
+      "notes": "Low-risk tuning: small change to meta-learning rate; tested in shadow trial before commit."
+    },
+
+    {
+      "id": "opt-002",
+      "name": "Prompt-adjustment-for-dialogue",
+      "priority": 90,
+      "enabled": true,
+      "scope": "Optimizer",
+      "trigger": {
+        "condition": "auxiliaryMetrics.DialogueEngagement < 0.6",
+        "description": "Improve LLM persona when user engagement falls below threshold"
+      },
+      "action": {
+        "type": "ModifyPrompt",
+        "targetLLM": "LLMI",
+        "promptDelta": "Be more concise, provide a short summary then a numbered plan; prefer active voice."
+      },
+      "notes": "Human-readable prompt patches; low risk."
+    },
+
+    {
+      "id": "nav-001",
+      "name": "Escalate-to-navigator-on-catastrophe",
+      "priority": 1000,
+      "enabled": true,
+      "scope": "Navigator",
+      "trigger": {
+        "condition": "overallCSI <= 0.3",
+        "description": "Hard structural failure — request architectural growth"
+      },
+      "action": {
+        "type": "ProposeGrowth",
+        "strategy": "determineNextGrowthStep",
+        "notes": "Navigator will compute an EmbodimentPath and propose GrowToDimension."
+      }
+    },
+
+    {
+      "id": "nav-002",
+      "name": "Sensory-fix-for-zero-sensor-accuracy",
+      "priority": 800,
+      "enabled": true,
+      "scope": "Navigator",
+      "trigger": {
+        "condition": "auxiliaryMetrics.SensoryAccuracy <= 0.01 && currentDimensionality <= \"NF1\"",
+        "description": "Sensors are effectively blind at low dimension — propose NF2 sensory upgrade"
+      },
+      "action": {
+        "type": "GrowToDimension",
+        "target": "NF2",
+        "notes": "High-cost action — must be shadow-trialed and pass DFS thresholds."
+      }
+    },
+
+    {
+      "id": "safety-001",
+      "name": "Block-high-risk-when-low-persistence",
+      "priority": 10000,
+      "enabled": true,
+      "scope": "Safety",
+      "trigger": {
+        "condition": "persistenceIndex < 0.2",
+        "description": "When the system is unstable, reduce acceptance of risky/complex actions"
+      },
+      "action": {
+        "type": "ModifyUOFConfig",
+        "strategy": "increase_risk_aversion",
+        "value_hint": { "lambda_r_delta": 0.5 }
+      },
+      "notes": "Safety-first rule: increase aversion to complexity and risk temporarily."
+    },
+
+    {
+      "id": "synth-001",
+      "name": "Run-synthetic-history-for-navigator-proposals",
+      "priority": 700,
+      "enabled": true,
+      "scope": "Simulation",
+      "trigger": {
+        "condition": "candidateAction.type in [\"GrowToDimension\", \"ConnectFiber\"]",
+        "description": "Before shadow trial: generate synthetic histories to pre-evaluate candidate"
+      },
+      "action": {
+        "type": "GenerateSyntheticHistory",
+        "simCycles": 100,
+        "simConfig": "default"
+      },
+      "notes": "Cheap pre-screen to reduce wasted shadow trials."
+    },
+
+    {
+      "id": "tuning-001",
+      "name": "Backoff-on-failed-shadow-trial",
+      "priority": 900,
+      "enabled": true,
+      "scope": "Lifecycle",
+      "trigger": {
+        "condition": "lastShadowTrial.uofScore <= shadow_trial_uof_accept",
+        "description": "If a shadow trial fails, prevent immediate re-proposal of the same action"
+      },
+      "action": {
+        "type": "QuarantineAction",
+        "quarantineCycles": 20
+      },
+      "notes": "Simple anti-flapping guard."
+    }
+  ]
+}
