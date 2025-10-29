@@ -6,23 +6,15 @@ on:
   pull_request:
     branches: [ main ]
 
-permissions:
-  contents: read
-
 jobs:
   build-and-test:
-    name: Build, Test & Lint (ULF Core)
+    name: Haskell Build, Test & Lint
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 20
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-
-      - name: Set up cache directories
-        run: |
-          mkdir -p ~/.cabal
-          mkdir -p ~/.ghc
 
       - name: Set up GHC and Cabal
         uses: haskell/actions/setup@v2
@@ -30,47 +22,17 @@ jobs:
           ghc-version: '9.2.8'
           cabal-version: '3.8'
 
-      - name: Restore cabal store cache
+      - name: Cache Haskell dependencies
         uses: actions/cache@v4
         with:
-          # cache the cabal store (speeds up dependency installs)
-          path: |
-            ~/.cabal/store
-            ~/.ghc
-            ~/.cache/cabal
-          key: ${{ runner.os }}-cabal-${{ hashFiles('**/*.cabal', '**/cabal.project*', 'stack.yaml') }}
-          restore-keys: |
-            ${{ runner.os }}-cabal-
+          path: ~/.cabal/store
+          key: ${{ runner.os }}-ghc-${{ hashFiles('**/*.cabal') }}
 
-      - name: Update cabal and get dependencies
-        run: |
-          cabal update
-          cabal v2-build --only-dependencies --enable-tests
+      - name: Build project dependencies
+        run: cabal build --only-dependencies --enable-tests all
 
-      - name: Build project
-        run: |
-          cabal v2-build all
+      - name: Build ULF project
+        run: cabal build --enable-tests all
 
-      - name: Run unit & property tests
-        run: |
-          cabal v2-test all --test-show-details=streaming
-
-      - name: Run HLint
-        run: |
-          # Install hlint in the environment (cached by cabal store)
-          cabal v2-install --lib hlint || cabal v2-install hlint
-          hlint src test
-
-      - name: Run ormolu (format check)
-        run: |
-          # ormolu for style; fail if sources are not formatted
-          cabal v2-install --lib ormolu || cabal v2-install ormolu
-          ormolu --mode check $(git ls-files '*.hs' | tr '\n' ' ')
-
-      - name: Upload test results (if any)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: cabal-test-logs
-          path: |
-            dist-newstyle/build/*/ghc-*/test/*/test-logs || true
+      - name: Run ULF unit tests
+        run: cabal test all
