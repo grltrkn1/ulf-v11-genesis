@@ -1,0 +1,22 @@
+# ULF v11 "Genesis" - Core Experimental Parameters
+# This file governs the 'physics' of the simulation environment and the scope of the experiment.
+
+# --- Experiment Scope ---
+N_EPISODES: 200        # Number of simulation runs per experiment. Higher = more statistical power.
+RANDOM_SEED_BASE: 42   # The base seed for reproducibility. Each episode will use seed + episode_id.
+
+# --- Environment Configuration (for simulate_hf_planning.py) ---
+GRID_SIZE: [8, 8, 4]   # Dimensions (x, y, z) of the 3D grid world.
+NF3_D: 3               # Side length of the NF3 tensor cube (n_vars = D*D*D). Higher = more complex state.
+MAX_PATH_LEN: 35       # Maximum number of steps an agent can take in an episode.
+
+# --- Reward & Cost Structure ---
+GOAL_REWARD: 100.0     # Reward for successfully reaching the goal.
+TRAP_PENALTY: -100.0   # Penalty for hitting a hidden trap (failure).
+STEP_COST: -1.0        # Small penalty for each step taken, encouraging efficiency.
+
+# --- Oracle & Planner Heuristics ---
+# These control the difficulty of the problem.
+ALPHA_ORACLE: 2.5      # Scales the influence of NF3 structure on the *true* hazard. Higher = more predictable world.
+ALPHA_SIGMOID_METRIC: 1.5 # Scales the Metric planner's sensitivity to the NF3 structure.
+BETA_SYMBOLIC: 3.0     # Scales the Symbolic planner's (flawed) heuristic.
